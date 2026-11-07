@@ -27,7 +27,7 @@ A navigation rail on the right of every view has Home, Baby and Lights buttons, 
 ## Hardware
 
 - Amazon Echo Show 5, **2nd gen** (model C76N8S), jailbroken and running **LineageOS** (TWRP kept)
-- The enclosure from The Stock Pot. Build details and the enclosure itself are on [his website](https://www.thestockpot.net/).
+- The enclosure from The Stock Pot: [build instructions on Printables](https://www.printables.com/model/1769972-amazon-echo-show-enclosure), or buy it ready-made from [his website](https://www.thestockpot.net/).
 - A camera in Home Assistant. I used a UniFi Protect camera, but any `camera.*` entity should work.
 - *Optional:* [Amazon Ethernet Adapter for Fire TV devices](https://www.amazon.com/dp/B074TC662N) (micro-USB) to put the Echo on wired Ethernet. See [Wired Ethernet instead of Wi-Fi](#wired-ethernet-instead-of-wi-fi).
 
@@ -180,7 +180,7 @@ Our Wi-Fi is unreliable, and an always-on camera stream makes that obvious. I pu
 
 ## Credits
 
-- [The Stock Pot](https://www.thestockpot.net/) ([video](https://youtu.be/6p5wvVl957c)) for the original idea and the enclosure
+- [The Stock Pot](https://www.thestockpot.net/) ([video](https://youtu.be/6p5wvVl957c), [Printables](https://www.printables.com/model/1769972-amazon-echo-show-enclosure)) for the original idea and the enclosure
 - The View Assist and VACA developers
 - The authors of button-card and Advanced Camera Card
 
