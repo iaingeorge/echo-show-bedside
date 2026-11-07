@@ -1,0 +1,23 @@
+# Replace:
+#   sensor.bedside_echo         your View Assist satellite sensor for the Echo
+#   /dashboard-bedside/baby     your dashboard's Baby view path
+#
+# Paste into Settings > Automations & Scenes > Create automation > Edit in YAML
+# (one list item at a time), or into automations.yaml.
+
+# View Assist returns to its default view after a timeout. While the baby monitor is
+# "on", send the Echo back to the camera view whenever it leaves it for 3 seconds.
+- alias: Bedside - keep baby monitor open
+  mode: single
+  triggers:
+    - trigger: template
+      value_template: >
+        {{ is_state('input_boolean.bedside_monitor', 'on')
+           and state_attr('sensor.bedside_echo', 'current_path') != '/dashboard-bedside/baby' }}
+      for:
+        seconds: 3
+  actions:
+    - action: view_assist.navigate
+      data:
+        device: sensor.bedside_echo
+        path: /dashboard-bedside/baby

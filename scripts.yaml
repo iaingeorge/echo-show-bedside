@@ -1,0 +1,42 @@
+# Rail navigation scripts. View Assist navigates the Echo to a dashboard path, and the
+# input_boolean.bedside_monitor helper records whether the baby monitor should stay open.
+#
+# Replace:
+#   sensor.bedside_echo      your View Assist satellite sensor for the Echo
+#   /dashboard-bedside/...   your dashboard's URL path
+#
+# Paste each script into Settings > Automations & Scenes > Scripts > Add script > Edit in YAML
+# (drop the top-level key), or into scripts.yaml if you manage scripts in YAML.
+
+bedside_home:
+  alias: Bedside home
+  sequence:
+    - action: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.bedside_monitor
+    - action: view_assist.navigate
+      data:
+        device: sensor.bedside_echo
+        path: /dashboard-bedside/home
+
+bedside_baby:
+  alias: Bedside baby monitor
+  sequence:
+    - action: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.bedside_monitor
+    - action: view_assist.navigate
+      data:
+        device: sensor.bedside_echo
+        path: /dashboard-bedside/baby
+
+bedside_lights:
+  alias: Bedside lights
+  sequence:
+    - action: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.bedside_monitor
+    - action: view_assist.navigate
+      data:
+        device: sensor.bedside_echo
+        path: /dashboard-bedside/lights

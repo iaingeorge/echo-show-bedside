@@ -1,0 +1,591 @@
+# Bedside dashboard for an Echo Show 5 (960x480) running View Assist Companion (VACA).
+#
+# Paste this into a new dashboard: Settings > Dashboards > Add dashboard > (blank) >
+# three-dot menu > Edit dashboard > three-dot menu > Raw configuration editor.
+#
+# Replace these placeholder entity IDs with your own (search and replace):
+#   sensor.bedside_echo_light_level   VACA light-level sensor of the Echo (drives night mode)
+#   weather.home                      any weather entity (clock screen)
+#   camera.nursery                    camera to show on the Baby view
+#   light.nursery                     nursery light (On / Low / Off buttons)
+#   light.bedroom                     main bedroom light (rail toggle)
+#   light.bedside_left                left bedside lamp
+#   light.bedside_right               right bedside lamp
+#
+# Requires: button-card, advanced-camera-card, and the View Assist integration
+# (for <viewassist-clock>). See the README.
+
+button_card_templates:
+  # Shared "night" variable: true when the room is dark (<= 5 lux on the Echo's light sensor).
+  night_vars:
+    triggers_update:
+      - sensor.bedside_echo_light_level
+    variables:
+      night: |
+        [[[
+          const s = states['sensor.bedside_echo_light_level'];
+          const lux = s ? parseFloat(s.state) : NaN;
+          return !isNaN(lux) && lux <= 5;
+        ]]]
+
+  # Full-screen page container. Fixed to the viewport so the HA header/sidebar never show,
+  # except when the URL contains ?edit=1, so the dashboard stays editable.
+  page:
+    template: night_vars
+    show_icon: false
+    show_name: false
+    tap_action:
+      action: none
+    styles:
+      card:
+        - position: "[[[ return window.location.search.includes('edit=1') ? 'relative' : 'fixed'; ]]]"
+        - top: 0
+        - left: 0
+        - right: 0
+        - bottom: 0
+        - margin: 0
+        - padding: 0
+        - z-index: 10
+        - height: 100vh
+        - width: 100vw
+        - border: none
+        - border-radius: 0
+        - overflow: hidden
+        - box-sizing: border-box
+      custom_fields:
+        rail:
+          - padding: 12px
+
+  # Right-hand navigation rail
+  rail:
+    template: night_vars
+    show_icon: false
+    show_name: false
+    tap_action:
+      action: none
+    styles:
+      card:
+        - background: '[[[ return variables.night ? "rgba(25, 0, 0, 0.9)" : "rgba(20, 20, 26, 0.88)" ]]]'
+        - border: none
+        - border-radius: 22px
+        - padding: 8px
+        - width: 80px
+      grid:
+        - grid-template-areas: '"home" "baby" "lights" "nursery" "bedroom"'
+        - grid-template-columns: 1fr
+        - row-gap: 6px
+        - justify-items: center
+
+  rail_button:
+    template: night_vars
+    show_name: false
+    show_state: false
+    styles:
+      card:
+        - background: transparent
+        - border: none
+        - box-shadow: none
+        - border-radius: 16px
+        - height: 64px
+        - width: 64px
+        - padding: 0
+      icon:
+        - width: 34px
+        - color: '[[[ return variables.night ? "#8b1a1a" : "white" ]]]'
+
+  # Highlighted rail button for the current page
+  rail_active:
+    template: rail_button
+    styles:
+      card:
+        - background: '[[[ return variables.night ? "#4a0d0d" : "#2b6cb0" ]]]'
+
+  # Rail button that toggles a light and shows its state
+  rail_light:
+    template: rail_button
+    tap_action:
+      action: toggle
+    styles:
+      icon:
+        - color: |
+            [[[
+              const on = entity && entity.state === "on";
+              if (variables.night) return on ? "#d4882b" : "#8b1a1a";
+              return on ? "#FFD54F" : "white";
+            ]]]
+
+  # Big light tile for the Lights page
+  light_tile:
+    template: night_vars
+    show_state: false
+    show_name: true
+    tap_action:
+      action: toggle
+    styles:
+      card:
+        - height: 26vh
+        - border: none
+        - border-radius: 20px
+        - box-shadow: none
+        - padding: 0
+        - background: |
+            [[[
+              const on = entity && entity.state === "on";
+              if (variables.night) return on ? "rgba(120, 30, 0, 0.55)" : "rgba(60, 0, 0, 0.45)";
+              return on ? "rgba(255, 196, 0, 0.30)" : "rgba(255, 255, 255, 0.08)";
+            ]]]
+      grid:
+        - grid-template-areas: '"i" "n"'
+        - grid-template-rows: 1fr min-content
+        - row-gap: 0.5vh
+        - padding: 2.5vh 0
+      icon:
+        - width: 9vh
+        - color: |
+            [[[
+              const on = entity && entity.state === "on";
+              if (variables.night) return on ? "#d4882b" : "#8b1a1a";
+              return on ? "#FFD54F" : "rgba(255,255,255,0.75)";
+            ]]]
+      name:
+        - font-size: 5vh
+        - font-weight: 500
+        - color: '[[[ return variables.night ? "#c0392b" : "white" ]]]'
+
+  # On / Low (dim red) / Off mode buttons for the nursery light.
+  # "Low" is detected as a mostly-red rgb_color.
+  nursery_mode:
+    template: night_vars
+    entity: light.nursery
+    show_state: false
+    show_name: true
+    variables:
+      current: |
+        [[[
+          const s = states['light.nursery'];
+          if (!s || s.state !== 'on') return 'off';
+          const rgb = s.attributes.rgb_color;
+          const red = rgb && rgb[0] > 200 && rgb[1] < 90 && rgb[2] < 90;
+          return red ? 'low' : 'on';
+        ]]]
+    styles:
+      card:
+        - height: 26vh
+        - border: none
+        - border-radius: 20px
+        - box-shadow: none
+        - padding: 0
+        - background: |
+            [[[
+              const active = variables.current === variables.mode;
+              if (variables.night) return active ? "rgba(120, 30, 0, 0.55)" : "rgba(60, 0, 0, 0.45)";
+              if (!active) return "rgba(255, 255, 255, 0.08)";
+              if (variables.mode === 'low') return "rgba(220, 40, 40, 0.40)";
+              if (variables.mode === 'on') return "rgba(255, 196, 0, 0.30)";
+              return "rgba(43, 108, 176, 0.55)";
+            ]]]
+      grid:
+        - grid-template-areas: '"i" "n"'
+        - grid-template-rows: 1fr min-content
+        - row-gap: 0.5vh
+        - padding: 2.5vh 0
+      icon:
+        - width: 9vh
+        - color: |
+            [[[
+              if (variables.night) return variables.current === variables.mode ? "#d4882b" : "#8b1a1a";
+              if (variables.mode === 'low') return "#ff6b6b";
+              if (variables.mode === 'on') return "#FFD54F";
+              return "rgba(255,255,255,0.75)";
+            ]]]
+      name:
+        - font-size: 5vh
+        - font-weight: 500
+        - color: '[[[ return variables.night ? "#c0392b" : "white" ]]]'
+
+  section_title:
+    template: night_vars
+    show_icon: false
+    show_name: true
+    tap_action:
+      action: none
+    styles:
+      card:
+        - background: none
+        - border: none
+        - box-shadow: none
+        - padding: 0 0 0 1vh
+      name:
+        - justify-self: start
+        - font-size: 4.5vh
+        - font-weight: 600
+        - letter-spacing: 0.05em
+        - text-transform: uppercase
+        - color: '[[[ return variables.night ? "#8b1a1a" : "rgba(255,255,255,0.65)" ]]]'
+
+views:
+  # ---------------------------------------------------------------- Home (clock)
+  - title: Home
+    path: home
+    type: panel
+    cards:
+      - type: custom:button-card
+        template: page
+        triggers_update:
+          - weather.home
+          - sensor.bedside_echo_light_level
+        styles:
+          card:
+            - background: |
+                [[[
+                  return variables.night
+                    ? 'radial-gradient(circle at 40% 50%, #2a0000 0%, #0a0000 75%)'
+                    : "center / cover no-repeat url('/view_assist/dashboard/background.jpg')";
+                ]]]
+          grid:
+            - grid-template-areas: '"clock rail"'
+            - grid-template-columns: 1fr auto
+            - grid-template-rows: 100vh
+            - align-items: center
+          custom_fields:
+            clock:
+              - justify-self: center
+        custom_fields:
+          clock: |
+            [[[
+              const night = variables.night;
+              const color = night ? '#c0392b' : 'white';
+              const shadow = night ? 'none' : '0 2px 10px rgba(0,0,0,0.45)';
+              const pillBg = night ? 'rgba(80,0,0,0.35)' : 'rgba(0,0,0,0.35)';
+              const w = states['weather.home'];
+              let wx = '';
+              if (w) {
+                wx = `<div style="display:inline-block;margin-top:2vh;padding:0.8vh 2.6vh;border-radius:999px;background:${pillBg};font-size:4.5vh;">
+                  ${hass.formatEntityState(w)} · ${w.attributes.temperature}${w.attributes.temperature_unit || '°'}</div>`;
+              }
+              return `<div style="text-align:center;color:${color};text-shadow:${shadow};">
+                <div style="font-size:30vh;font-weight:500;line-height:1;"><viewassist-clock server_time=true mode='time' hour24=false></viewassist-clock></div>
+                <div style="font-size:7.5vh;font-weight:600;margin-top:1vh;"><viewassist-clock server_time=true format='%A %d %B'></viewassist-clock></div>
+                ${wx}
+              </div>`;
+            ]]]
+          rail:
+            card:
+              type: custom:button-card
+              template: rail
+              custom_fields:
+                home:
+                  card:
+                    type: custom:button-card
+                    template: rail_active
+                    icon: mdi:home
+                    tap_action:
+                      action: perform-action
+                      perform_action: script.bedside_home
+                baby:
+                  card:
+                    type: custom:button-card
+                    template: rail_button
+                    icon: mdi:baby-carriage
+                    tap_action:
+                      action: perform-action
+                      perform_action: script.bedside_baby
+                lights:
+                  card:
+                    type: custom:button-card
+                    template: rail_button
+                    icon: mdi:lightbulb-group
+                    tap_action:
+                      action: perform-action
+                      perform_action: script.bedside_lights
+                nursery:
+                  card:
+                    type: custom:button-card
+                    template: rail_light
+                    entity: light.nursery
+                    icon: mdi:lightbulb-night
+                bedroom:
+                  card:
+                    type: custom:button-card
+                    template: rail_light
+                    entity: light.bedroom
+                    icon: mdi:lamp
+
+  # ---------------------------------------------------------------- Baby (camera)
+  - title: Baby
+    path: baby
+    type: panel
+    cards:
+      - type: custom:button-card
+        template: page
+        styles:
+          card:
+            - background: black
+          grid:
+            - grid-template-areas: '"cam rail"'
+            - grid-template-columns: 1fr auto
+            - grid-template-rows: 100vh
+            - align-items: center
+          custom_fields:
+            cam:
+              # Full screen height at 16:9, pinned to the left edge next to the rail
+              - width: calc(100vh * 16 / 9)
+              - max-width: 100%
+              - justify-self: start
+              - align-self: center
+        custom_fields:
+          cam:
+            card:
+              type: custom:advanced-camera-card
+              cameras:
+                - camera_entity: camera.nursery
+                  # HA's own player worked far better on the Echo than the WebRTC card
+                  live_provider: ha
+              view:
+                default: live
+              dimensions:
+                aspect_ratio_mode: static
+                aspect_ratio: "16:9"
+              cameras_global:
+                dimensions:
+                  layout:
+                    fit: cover
+              live:
+                # Sound on whenever the view is shown
+                auto_unmute:
+                  - visible
+                  - selected
+                controls:
+                  builtin: false
+              menu:
+                # "hidden" = no grey bar over the video; tap the video to show the mute button
+                style: hidden
+                position: bottom
+                alignment: right
+                buttons:
+                  mute:
+                    enabled: true
+                    permanent: true
+                  cameras:
+                    enabled: false
+                  clips:
+                    enabled: false
+                  snapshots:
+                    enabled: false
+                  recordings:
+                    enabled: false
+                  timeline:
+                    enabled: false
+                  download:
+                    enabled: false
+                  camera_ui:
+                    enabled: false
+                  fullscreen:
+                    enabled: false
+                  live:
+                    enabled: false
+                  frigate:
+                    enabled: false
+              status_bar:
+                style: none
+              profiles:
+                - low-performance
+          rail:
+            card:
+              type: custom:button-card
+              template: rail
+              custom_fields:
+                home:
+                  card:
+                    type: custom:button-card
+                    template: rail_button
+                    icon: mdi:home
+                    tap_action:
+                      action: perform-action
+                      perform_action: script.bedside_home
+                baby:
+                  card:
+                    type: custom:button-card
+                    template: rail_active
+                    icon: mdi:baby-carriage
+                    tap_action:
+                      action: perform-action
+                      perform_action: script.bedside_baby
+                lights:
+                  card:
+                    type: custom:button-card
+                    template: rail_button
+                    icon: mdi:lightbulb-group
+                    tap_action:
+                      action: perform-action
+                      perform_action: script.bedside_lights
+                nursery:
+                  card:
+                    type: custom:button-card
+                    template: rail_light
+                    entity: light.nursery
+                    icon: mdi:lightbulb-night
+                bedroom:
+                  card:
+                    type: custom:button-card
+                    template: rail_light
+                    entity: light.bedroom
+                    icon: mdi:lamp
+
+  # ---------------------------------------------------------------- Lights
+  - title: Lights
+    path: lights
+    type: panel
+    cards:
+      - type: custom:button-card
+        template: page
+        styles:
+          card:
+            - background: |
+                [[[
+                  return variables.night
+                    ? 'radial-gradient(circle at 40% 50%, #1e0000 0%, #070000 75%)'
+                    : 'linear-gradient(160deg, #1b2230 0%, #0e1118 100%)';
+                ]]]
+          grid:
+            - grid-template-areas: '"panel rail"'
+            - grid-template-columns: 1fr auto
+            - grid-template-rows: 100vh
+            - align-items: center
+          custom_fields:
+            panel:
+              - padding: 0 3vh
+        custom_fields:
+          panel:
+            card:
+              type: custom:button-card
+              show_icon: false
+              show_name: false
+              tap_action:
+                action: none
+              styles:
+                card:
+                  - background: none
+                  - border: none
+                  - box-shadow: none
+                  - padding: 0
+                grid:
+                  - grid-template-areas: |
+                      "bt bt bt bt bt bt"
+                      "l l l r r r"
+                      "nt nt nt nt nt nt"
+                      "on on low low off off"
+                  - grid-template-columns: repeat(6, 1fr)
+                  - column-gap: 2vh
+                  - row-gap: 2vh
+              custom_fields:
+                bt:
+                  card:
+                    type: custom:button-card
+                    template: section_title
+                    name: Bedroom
+                l:
+                  card:
+                    type: custom:button-card
+                    template: light_tile
+                    entity: light.bedside_left
+                    name: Left
+                    icon: mdi:lamp
+                r:
+                  card:
+                    type: custom:button-card
+                    template: light_tile
+                    entity: light.bedside_right
+                    name: Right
+                    icon: mdi:lamp
+                nt:
+                  card:
+                    type: custom:button-card
+                    template: section_title
+                    name: Nursery
+                "on":
+                  card:
+                    type: custom:button-card
+                    template: nursery_mode
+                    name: "On"
+                    icon: mdi:lightbulb-on
+                    variables:
+                      mode: "on"
+                    tap_action:
+                      action: perform-action
+                      perform_action: light.turn_on
+                      target:
+                        entity_id: light.nursery
+                      data:
+                        brightness_pct: 100
+                        color_temp_kelvin: 2700
+                low:
+                  card:
+                    type: custom:button-card
+                    template: nursery_mode
+                    name: Low
+                    icon: mdi:weather-night
+                    variables:
+                      mode: low
+                    tap_action:
+                      action: perform-action
+                      perform_action: light.turn_on
+                      target:
+                        entity_id: light.nursery
+                      data:
+                        brightness_pct: 30
+                        rgb_color: [255, 0, 0]
+                "off":
+                  card:
+                    type: custom:button-card
+                    template: nursery_mode
+                    name: "Off"
+                    icon: mdi:lightbulb-off-outline
+                    variables:
+                      mode: "off"
+                    tap_action:
+                      action: perform-action
+                      perform_action: light.turn_off
+                      target:
+                        entity_id: light.nursery
+          rail:
+            card:
+              type: custom:button-card
+              template: rail
+              custom_fields:
+                home:
+                  card:
+                    type: custom:button-card
+                    template: rail_button
+                    icon: mdi:home
+                    tap_action:
+                      action: perform-action
+                      perform_action: script.bedside_home
+                baby:
+                  card:
+                    type: custom:button-card
+                    template: rail_button
+                    icon: mdi:baby-carriage
+                    tap_action:
+                      action: perform-action
+                      perform_action: script.bedside_baby
+                lights:
+                  card:
+                    type: custom:button-card
+                    template: rail_active
+                    icon: mdi:lightbulb-group
+                    tap_action:
+                      action: perform-action
+                      perform_action: script.bedside_lights
+                nursery:
+                  card:
+                    type: custom:button-card
+                    template: rail_light
+                    entity: light.nursery
+                    icon: mdi:lightbulb-night
+                bedroom:
+                  card:
+                    type: custom:button-card
+                    template: rail_light
+                    entity: light.bedroom
+                    icon: mdi:lamp
