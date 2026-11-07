@@ -31,7 +31,12 @@ A navigation rail on the right of every view has Home, Baby and Lights buttons, 
 - A camera in Home Assistant. I used a UniFi Protect camera, but any `camera.*` entity should work.
 - *Optional:* [Amazon Ethernet Adapter for Fire TV devices](https://www.amazon.com/dp/B074TC662N) (micro-USB) to put the Echo on wired Ethernet. See [Wired Ethernet instead of Wi-Fi](#wired-ethernet-instead-of-wi-fi).
 
-> The jailbreak and the LineageOS install are outside the scope of this repo. Follow the guide for your device and firmware. <!-- Link the guide you used here. -->
+> **Jailbreak and LineageOS.** I followed these two, for the **Echo Show 5 2nd gen (2021, codename "cronos")**:
+>
+> - [Video walkthrough of the jailbreak and the LineageOS install](https://youtu.be/cuPikKRJQ2I)
+> - [XDA: Unlock / Root / TWRP / Unbrick Amazon Echo Show 5 2nd Gen (2021) – cronos](https://xdaforums.com/t/unlock-root-twrp-unbrick-amazon-echo-show-5-2nd-gen-2021-cronos.4772596/)
+>
+> ⚠️ These steps are for the **2nd gen only**. The 1st gen Echo Show 5 is different hardware and needs different instructions. Check your model before you start.
 
 ## Software on the Echo
 
