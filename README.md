@@ -2,13 +2,13 @@
 
 Turn a 2nd-gen Amazon Echo Show 5 into a bedside Home Assistant display: a big clock with the weather, one-tap light controls, and a baby monitor with sound from a UniFi Protect camera. It switches to a dim red night mode when the room goes dark.
 
-This project was inspired by [The Stock Pot's video](https://youtu.be/6p5wvVl957c), which showed the build and the enclosure but didn't publish any code. This repo is the Home Assistant side: the dashboard, scripts and automations, plus the problems I hit and how I solved them.
+This project was inspired by [The Stock Pot's video](https://youtu.be/6p5wvVl957c), which showed the build and the enclosure. This repo is the Home Assistant code side: the dashboard, scripts and automations, plus the problems I hit and how I solved them.
 
 | Home | Baby (mockup) | Lights |
 |---|---|---|
 | ![Home view: clock, date and weather, with the navigation rail on the right](docs/home.png) | ![Baby view mockup: full-height camera feed with the Baby button highlighted](docs/baby.png) | ![Lights view: bedside lamp tiles and On / Low / Off for the child's room light](docs/lights.png) |
 
-*The Baby view image is a mockup. The camera picture is an illustration, not a real feed.*
+*The Baby view image is a mockup. The camera picture is an illustration of a camera feed.*
 
 ## What you get
 
