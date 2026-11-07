@@ -25,6 +25,7 @@ A navigation rail on the right of every view has Home, Baby and Lights buttons, 
 - Amazon Echo Show 5, **2nd gen** (model C76N8S), jailbroken and running **LineageOS** (TWRP kept)
 - The enclosure from The Stock Pot's video
 - A camera in Home Assistant. I used a UniFi Protect camera, but any `camera.*` entity should work.
+- *Optional:* [Amazon Ethernet Adapter for Fire TV devices](https://www.amazon.com/dp/B074TC662N) (micro-USB) to put the Echo on wired Ethernet. See [Wired Ethernet instead of Wi-Fi](#wired-ethernet-instead-of-wi-fi).
 
 > The jailbreak and the LineageOS install are outside the scope of this repo. Follow the guide for your device and firmware. <!-- Link the guide you used here. -->
 
@@ -124,6 +125,10 @@ cam:
   - max-width: 100%
   - justify-self: start
 ```
+
+### Wired Ethernet instead of Wi-Fi
+
+Our Wi-Fi is unreliable, and an always-on camera stream makes that obvious. I put the Echo on wired Ethernet with Amazon's [micro-USB Ethernet adapter for Fire TV devices](https://www.amazon.com/dp/B074TC662N), and it's been more stable since. Your mileage may vary: if your Wi-Fi is solid, you may not need it.
 
 ## Credits
 
