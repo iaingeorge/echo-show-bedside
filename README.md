@@ -4,11 +4,11 @@ Turn a 2nd-gen Amazon Echo Show 5 into a bedside Home Assistant display: a big c
 
 This project was inspired by [The Stock Pot's video](https://youtu.be/6p5wvVl957c), which showed the build and the enclosure but didn't publish any code. This repo is the Home Assistant side: the dashboard, scripts and automations, plus the problems I hit and how I solved them.
 
-| Home | Lights |
-|---|---|
-| ![Home view: clock, date and weather, with the navigation rail on the right](docs/home.png) | ![Lights view: bedside lamp tiles and On / Low / Off for the child's room light](docs/lights.png) |
+| Home | Baby (mockup) | Lights |
+|---|---|---|
+| ![Home view: clock, date and weather, with the navigation rail on the right](docs/home.png) | ![Baby view mockup: full-height camera feed with the Baby button highlighted](docs/baby.png) | ![Lights view: bedside lamp tiles and On / Low / Off for the child's room light](docs/lights.png) |
 
-<!-- Screenshot still to add: docs/baby.png -->
+*The Baby view image is a mockup. The camera picture is an illustration, not a real feed.*
 
 ## What you get
 
