@@ -16,9 +16,9 @@ This project was inspired by [The Stock Pot's video](https://youtu.be/6p5wvVl957
 |---|---|
 | **Home** | Large clock, date and current weather over a background image |
 | **Baby** | Full-height live camera with audio; tap the video for the mute button |
-| **Lights** | Big tiles for the bedside lamps and On / Low (dim red) / Off for the nursery light |
+| **Lights** | Big tiles for the bedside lamps and On / Low (dim red) / Off for the child's room light |
 
-A navigation rail on the right of every view has Home, Baby and Lights buttons, plus quick toggles for the nursery and bedroom lights.
+A navigation rail on the right of every view has Home, Baby and Lights buttons, plus quick toggles for the child's room and bedroom lights.
 
 **Night mode.** When the Echo's light sensor reads 5 lux or less, every view switches to a dim red palette that won't light up the room.
 
@@ -27,7 +27,7 @@ A navigation rail on the right of every view has Home, Baby and Lights buttons, 
 ## Hardware
 
 - Amazon Echo Show 5, **2nd gen** (model C76N8S), jailbroken and running **LineageOS** (TWRP kept)
-- The enclosure from The Stock Pot's video
+- The enclosure from The Stock Pot. Build details and the enclosure itself are on [his website](https://www.thestockpot.net/).
 - A camera in Home Assistant. I used a UniFi Protect camera, but any `camera.*` entity should work.
 - *Optional:* [Amazon Ethernet Adapter for Fire TV devices](https://www.amazon.com/dp/B074TC662N) (micro-USB) to put the Echo on wired Ethernet. See [Wired Ethernet instead of Wi-Fi](#wired-ethernet-instead-of-wi-fi).
 
@@ -64,38 +64,77 @@ Settings → Devices & services → Helpers → Create helper → **Toggle**
 
 The scripts and the "keep baby monitor open" automation use it.
 
-### 2. Map the entities
+### 2. Set up View Assist for the Echo
+
+If you haven't already, follow the [View Assist](https://dinki.github.io/View-Assist/) and [VACA](https://dinki.github.io/View-Assist/docs/viewassist-setup/display-devices/vaca) setup guides so the Echo shows up in Home Assistant. Install **both** the VACA app on the Echo **and** the VACA integration in Home Assistant.
+
+Then add a View Assist device for the Echo (Settings → Devices & services → View Assist → Add device), choosing the Echo as its display. In that device's settings, point it at this dashboard:
+
+- Dashboard: `/dashboard-bedside`
+- Home screen: `/dashboard-bedside/home`
+
+(Field names can differ between View Assist versions.) View Assist creates a sensor for the device, such as `sensor.bedside_echo`. That's the entity the scripts and automation use to navigate the Echo.
+
+### 3. Map the entities
 
 Every entity ID in this repo is a placeholder. Search and replace them with your own:
 
 | Placeholder | What it is |
 |---|---|
 | `sensor.bedside_echo_light_level` | The Echo's light-level sensor (VACA). Drives night mode. |
-| `sensor.bedside_echo` | The Echo's View Assist satellite sensor, used for navigation |
+| `sensor.bedside_echo` | The Echo's View Assist device sensor (step 2), used for navigation |
 | `weather.home` | Any weather entity |
 | `camera.nursery` | The camera for the Baby view |
-| `light.nursery` | Nursery light (rail toggle and On / Low / Off) |
+| `light.nursery` | Child's room light (rail toggle and On / Low / Off) |
 | `light.bedroom` | Main bedroom light (rail toggle) |
 | `light.bedside_left`, `light.bedside_right` | Bedside lamps |
 
-### 3. Add the dashboard
+**About the child's room light.** The **On** button sets a warm white (`color_temp_kelvin: 2700`) and **Low** sets dim red (`rgb_color: [255, 0, 0]`), so this needs a colour bulb. For a plain dimmable bulb, change those two buttons in the dashboard to use `brightness_pct` only.
 
-1. Settings → Dashboards → **Add dashboard** → "New dashboard from scratch". Give it the URL `dashboard-bedside`, or change the paths in the scripts and automations to match.
+**About the camera.** For sound on the Baby view, the camera's own microphone must be on (for UniFi Protect, in the camera's settings in the Protect app).
+
+### 4. Add the dashboard
+
+1. Settings → Dashboards → **Add dashboard** → "New dashboard from scratch". Give it the URL `dashboard-bedside`, or change the paths in the scripts and automation to match.
 2. Open it → ⋮ → Edit dashboard → ⋮ → **Raw configuration editor**.
 3. Paste in [`dashboard/bedside-dashboard.yaml`](dashboard/bedside-dashboard.yaml) and save.
 
-### 4. Add the scripts and automations
+The Home view's daytime background is `/view_assist/dashboard/background.jpg`, one of the images that comes with View Assist's own dashboard. If it's missing (the Home view has no background), install View Assist's dashboard and views, or change that path in the `page` card's `background` to any image you like, for example one in `/local/`.
+
+### 5. Add the scripts and automation
 
 - [`scripts.yaml`](scripts.yaml): `bedside_home`, `bedside_baby` and `bedside_lights`, used by the rail buttons
 - [`automations.yaml`](automations.yaml): keeps the baby monitor open
 
-### 5. Point VACA at the dashboard
+**Keep the script IDs exactly as they are.** The rail buttons call `script.bedside_home`, `script.bedside_baby` and `script.bedside_lights`. If you create them in the script editor, Home Assistant builds the ID from the name you type, so open each one in YAML mode and check the ID matches. Otherwise the buttons do nothing.
 
-Set the Echo's default dashboard/view in View Assist to `/dashboard-bedside/home`.
+### 6. Recommended VACA settings
 
-### Screen brightness
+Set these in the VACA app on the Echo, or with VACA's entities in Home Assistant:
 
-You don't need an automation for this. Leave VACA's **Auto brightness** on (in the app, or its switch entity in Home Assistant). It follows the Echo's light sensor and dims the screen well on its own. Night mode only changes the dashboard's colours, not the screen brightness, so the two work together.
+| Setting | Value | Why |
+|---|---|---|
+| **Wake word** | **None** | **Important.** With a wake word on, the baby monitor sound cuts out every few seconds. See [Lessons learned](#baby-monitor-audio-played-1-second-out-of-every-7). |
+| Screen always on | On | The clock stays visible |
+| Auto brightness | On | Dims the screen with the room light, so no automation is needed. Night mode only changes the dashboard's colours, so the two work together. |
+| Dark mode | On | Dark app chrome around the dashboard |
+| Show status bar | Off | Full screen |
+| Screen saver | Off | Would hide the clock |
+
+### 7. Recommended LineageOS settings
+
+These make the Echo behave like an appliance: it boots straight into the dashboard and stays there.
+
+- **Make VACA the home app (launcher).** On Android 10 and later, this is how VACA starts on boot (it replaced its old "start on boot" option). After a power cut, the Echo comes back to the dashboard on its own. Set it when VACA prompts you, or in Settings → Apps → Default apps → Home app.
+- **Turn off the lock screen.** Settings → Security → Screen lock → **None**, so a reboot doesn't stop at a lock screen.
+- **Turn off battery optimisation for VACA.** Settings → Apps → VACA → Battery → **Not optimized** / Unrestricted, so Android never puts it to sleep in the background.
+- **Sign in once.** VACA keeps its Home Assistant login after a reboot, so there's no auto-login to set up.
+- **Optional backup for the screen:** Settings → System → Developer options → **Stay awake** (while charging). VACA's "Screen always on" already handles this, but it does no harm.
+
+### Tweaks
+
+- **Night mode threshold:** night mode turns on at **5 lux** or less. To change it, edit the `lux <= 5` line in the `night_vars` template at the top of the dashboard.
+- **Section headings:** the Lights view's headings ("Master Bedroom" and "Child") are the `name:` values of the two `section_title` cards.
 
 ## Lessons learned (the useful part)
 
@@ -141,7 +180,7 @@ Our Wi-Fi is unreliable, and an always-on camera stream makes that obvious. I pu
 
 ## Credits
 
-- [The Stock Pot](https://youtu.be/6p5wvVl957c) for the original idea and the enclosure
+- [The Stock Pot](https://www.thestockpot.net/) ([video](https://youtu.be/6p5wvVl957c)) for the original idea and the enclosure
 - The View Assist and VACA developers
 - The authors of button-card and Advanced Camera Card
 
