@@ -21,3 +21,143 @@
       data:
         device: sensor.bedside_echo
         path: /dashboard-bedside/baby
+
+# Nightly auto-lock for the front door. Needs a Time helper:
+#   Settings > Devices & services > Helpers > Create helper > Date and/or time > Time
+#   Name: "Front Door Auto-Lock Time"  ->  input_datetime.front_door_auto_lock_time
+#
+# Replace:
+#   lock.front_door                    your front door lock
+#   binary_sensor.front_door           the lock's own door sensor
+#   binary_sensor.front_door_contact   a separate contact sensor (or delete it from the wait)
+#   notify.mobile_app_phone_1 / _2     the phones to notify (iOS push options shown)
+#
+# Runs at the auto-lock time, again at midnight and 2am as a backup, and whenever the door
+# has been left unlocked for 10 minutes overnight. It waits for the door to close before
+# locking, retries if the lock doesn't respond, and notifies you either way.
+- alias: Front Door - Nightly Auto-Lock
+  mode: queued
+  max: 2
+  max_exceeded: silent
+  triggers:
+    - trigger: time
+      at: input_datetime.front_door_auto_lock_time
+      id: bedtime
+    - trigger: time
+      at: "00:00:00"
+      id: retry
+    - trigger: time
+      at: "02:00:00"
+      id: retry
+    - trigger: state
+      entity_id: lock.front_door
+      to: unlocked
+      for:
+        minutes: 10
+      id: relock
+  conditions:
+    - condition: time
+      after: input_datetime.front_door_auto_lock_time
+      before: "06:00:00"
+    - condition: not
+      conditions:
+        - condition: state
+          entity_id: lock.front_door
+          state: locked
+  actions:
+    # Smart locks drop offline now and then; give it a few minutes to come back.
+    - if:
+        - condition: state
+          entity_id: lock.front_door
+          state: [unavailable, unknown]
+      then:
+        - wait_template: "{{ states('lock.front_door') not in ['unavailable', 'unknown'] }}"
+          timeout:
+            minutes: 5
+        - if:
+            - "{{ not wait.completed }}"
+          then:
+            - action: notify.mobile_app_phone_1
+              continue_on_error: true
+              data: &offline_msg
+                title: Front door
+                message: Couldn't check the front door lock - it's offline. Please check it manually.
+                data:
+                  push:
+                    interruption-level: time-sensitive
+            - action: notify.mobile_app_phone_2
+              continue_on_error: true
+              data: *offline_msg
+            - stop: Lock offline
+    - if:
+        - condition: state
+          entity_id: lock.front_door
+          state: locked
+      then:
+        - stop: Already locked
+    # Never throw the bolt into an open door: wait for it to be shut.
+    - wait_template: >
+        {{ not is_state('binary_sensor.front_door', 'on')
+           and not is_state('binary_sensor.front_door_contact', 'on') }}
+      timeout:
+        minutes: 10
+    - if:
+        - "{{ not wait.completed }}"
+      then:
+        - action: notify.mobile_app_phone_1
+          continue_on_error: true
+          data: &open_msg
+            title: Front door
+            message: The front door is open, so it couldn't be locked. Will try again later.
+            data:
+              push:
+                interruption-level: time-sensitive
+        - action: notify.mobile_app_phone_2
+          continue_on_error: true
+          data: *open_msg
+        - stop: Door open
+    # Up to 3 attempts, confirming the lock actually reports locked.
+    - repeat:
+        sequence:
+          - action: lock.lock
+            target:
+              entity_id: lock.front_door
+            continue_on_error: true
+          - wait_template: "{{ is_state('lock.front_door', 'locked') }}"
+            timeout:
+              seconds: 45
+        until:
+          - condition: or
+            conditions:
+              - condition: state
+                entity_id: lock.front_door
+                state: locked
+              - "{{ repeat.index >= 3 }}"
+    - if:
+        - condition: state
+          entity_id: lock.front_door
+          state: locked
+      then:
+        - action: notify.mobile_app_phone_1
+          continue_on_error: true
+          data: &locked_msg
+            title: Front door
+            message: "Front door was unlocked - locked it for the night ({{ now().strftime('%-I:%M %p') }})."
+            data:
+              push:
+                interruption-level: passive
+        - action: notify.mobile_app_phone_2
+          continue_on_error: true
+          data: *locked_msg
+      else:
+        - action: notify.mobile_app_phone_1
+          continue_on_error: true
+          data: &failed_msg
+            title: Front door
+            message: Tried to lock the front door 3 times and it's still not locked. Please check it.
+            data:
+              push:
+                interruption-level: time-sensitive
+        - action: notify.mobile_app_phone_2
+          continue_on_error: true
+          data: *failed_msg

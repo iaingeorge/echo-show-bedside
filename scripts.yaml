@@ -40,3 +40,28 @@ bedside_lights:
       data:
         device: sensor.bedside_echo
         path: /dashboard-bedside/lights
+
+# Used by the Front Door tile on the Lights view. Locks the door only when it's closed,
+# so the bolt is never thrown into an open door. Replace:
+#   lock.front_door                   your front door lock
+#   binary_sensor.front_door          the lock's own door sensor
+#   binary_sensor.front_door_contact  a separate contact sensor (delete that line if you only have one)
+front_door_lock_if_closed:
+  alias: Front Door - Lock If Closed
+  icon: mdi:lock
+  mode: single
+  sequence:
+    - if:
+        - condition: or
+          conditions:
+            - condition: state
+              entity_id: binary_sensor.front_door
+              state: "on"
+            - condition: state
+              entity_id: binary_sensor.front_door_contact
+              state: "on"
+      then:
+        - stop: Door is open
+    - action: lock.lock
+      target:
+        entity_id: lock.front_door

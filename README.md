@@ -1,14 +1,14 @@
 # Echo Show 5 Bedside Controller for Home Assistant
 
-Turn a 2nd-gen Amazon Echo Show 5 into a bedside Home Assistant display: a big clock with the weather, one-tap light controls, and a baby monitor with sound from a UniFi Protect camera. It switches to a dim red night mode when the room goes dark.
+Turn a 2nd-gen Amazon Echo Show 5 into a bedside Home Assistant display: a big clock with the weather, one-tap light controls, a front-door lock status tile, and a baby monitor with sound from a UniFi Protect camera. It switches to a dim red night mode when the room goes dark.
 
 This project was inspired by [The Stock Pot's video](https://youtu.be/6p5wvVl957c), which showed the build and the enclosure. This repo is the Home Assistant code side: the dashboard, scripts and automations, plus the problems I hit and how I solved them.
 
-| Home | Baby (mockup) | Lights |
+| Home | Baby (mockup) | Lights (mockup) |
 |---|---|---|
-| ![Home view: clock, date and weather, with the navigation rail on the right](docs/home.png) | ![Baby view mockup: full-height camera feed with the Baby button highlighted](docs/baby.png) | ![Lights view: bedside lamp tiles and On / Low / Off for the child's room light](docs/lights.png) |
+| ![Home view: clock, date and weather, with the navigation rail on the right](docs/home.png) | ![Baby view mockup: full-height camera feed with the Baby button highlighted](docs/baby.png) | ![Lights view mockup: bedside lamp tiles, a Front Door lock tile, and On / Low / Off for the child's room light](docs/lights.png) |
 
-*The Baby view image is a mockup. The camera picture is an illustration of a camera feed.*
+*The Baby and Lights images are mockups rendered from the dashboard's styles. The camera picture is an illustration of a camera feed.*
 
 ## What you get
 
@@ -16,11 +16,13 @@ This project was inspired by [The Stock Pot's video](https://youtu.be/6p5wvVl957
 |---|---|
 | **Home** | Large clock, date and current weather over a background image |
 | **Baby** | Full-height live camera with audio; tap the video for the mute button |
-| **Lights** | Big tiles for the bedside lamps and On / Low (dim red) / Off for the child's room light |
+| **Lights** | Big tiles for the bedside lamps, a **Front Door** tile (locked/unlocked and door open/closed), and On / Low (dim red) / Off for the child's room light |
 
 A navigation rail on the right of every view has Home, Baby and Lights buttons, plus quick toggles for the child's room and bedroom lights.
 
 **Night mode.** When the Echo's light sensor reads 5 lux or less, every view switches to a dim red palette that won't light up the room.
+
+**Front door check from bed.** The Front Door tile shows whether the door is locked and whether it's open or closed: green when locked, amber when unlocked, red when the door is open. Tap to lock (it won't lock an open door); long-press to unlock, with a confirmation prompt. A companion automation locks the door every night and tells you if it couldn't.
 
 **The baby monitor stays open.** View Assist normally goes back to its default view after a timeout. An automation sends the Echo back to the camera while the monitor is "on".
 
@@ -64,6 +66,12 @@ Settings → Devices & services → Helpers → Create helper → **Toggle**
 
 The scripts and the "keep baby monitor open" automation use it.
 
+For the nightly auto-lock (optional), also create a **Date and/or time** helper set to **Time** only:
+
+- Name: `Front Door Auto-Lock Time`
+- Entity ID: `input_datetime.front_door_auto_lock_time`
+- Set it to your usual bedtime, for example 10:00 PM. You can change it any time.
+
 ### 2. Set up View Assist for the Echo
 
 If you haven't already, follow the [View Assist](https://dinki.github.io/View-Assist/) and [VACA](https://dinki.github.io/View-Assist/docs/viewassist-setup/display-devices/vaca) setup guides so the Echo shows up in Home Assistant. Install **both** the VACA app on the Echo **and** the VACA integration in Home Assistant.
@@ -88,6 +96,12 @@ Every entity ID in this repo is a placeholder. Search and replace them with your
 | `light.nursery` | Child's room light (rail toggle and On / Low / Off) |
 | `light.bedroom` | Main bedroom light (rail toggle) |
 | `light.bedside_left`, `light.bedside_right` | Bedside lamps |
+| `lock.front_door` | Front door lock |
+| `binary_sensor.front_door` | The lock's own door sensor (open/closed) |
+| `binary_sensor.front_door_contact` | A separate contact sensor on the same door |
+| `notify.mobile_app_phone_1`, `notify.mobile_app_phone_2` | Phones for auto-lock notifications |
+
+**About the door sensors.** The tile and the auto-lock treat the door as open if *either* sensor says open. I use both because my lock's built-in sensor and a separate contact sensor each drop out now and then. If you only have one, delete the `binary_sensor.front_door_contact` lines. A sensor that's offline counts as "not open", so a flaky sensor doesn't stop the door locking every night.
 
 **About the child's room light.** The **On** button sets a warm white (`color_temp_kelvin: 2700`) and **Low** sets dim red (`rgb_color: [255, 0, 0]`), so this needs a colour bulb. For a plain dimmable bulb, change those two buttons in the dashboard to use `brightness_pct` only.
 
@@ -103,10 +117,10 @@ The Home view's daytime background is `/view_assist/dashboard/background.jpg`, o
 
 ### 5. Add the scripts and automation
 
-- [`scripts.yaml`](scripts.yaml): `bedside_home`, `bedside_baby` and `bedside_lights`, used by the rail buttons
-- [`automations.yaml`](automations.yaml): keeps the baby monitor open
+- [`scripts.yaml`](scripts.yaml): `bedside_home`, `bedside_baby` and `bedside_lights`, used by the rail buttons, and `front_door_lock_if_closed`, used by the Front Door tile
+- [`automations.yaml`](automations.yaml): keeps the baby monitor open, and the optional **Front Door - Nightly Auto-Lock**
 
-**Keep the script IDs exactly as they are.** The rail buttons call `script.bedside_home`, `script.bedside_baby` and `script.bedside_lights`. If you create them in the script editor, Home Assistant builds the ID from the name you type, so open each one in YAML mode and check the ID matches. Otherwise the buttons do nothing.
+**Keep the script IDs exactly as they are.** The rail buttons call `script.bedside_home`, `script.bedside_baby` and `script.bedside_lights`, and the Front Door tile calls `script.front_door_lock_if_closed`. If you create them in the script editor, Home Assistant builds the ID from the name you type, so open each one in YAML mode and check the ID matches. Otherwise the buttons do nothing.
 
 ### 6. Recommended VACA settings
 
@@ -134,7 +148,8 @@ These make the Echo behave like an appliance: it boots straight into the dashboa
 ### Tweaks
 
 - **Night mode threshold:** night mode turns on at **5 lux** or less. To change it, edit the `lux <= 5` line in the `night_vars` template at the top of the dashboard.
-- **Section headings:** the Lights view's headings ("Master Bedroom" and "Child") are the `name:` values of the two `section_title` cards.
+- **Section headings:** the Lights view's headings ("Master Bedroom", "Front Door" and "Child") are the `name:` values of the `section_title` cards.
+- **No lock?** Delete the `dt` and `lk` cards from the Lights view and change the first two grid rows back to `"bt bt bt bt bt bt"` and `"l l l r r r"`.
 
 ## Lessons learned (the useful part)
 
@@ -173,6 +188,16 @@ cam:
   - max-width: 100%
   - justify-self: start
 ```
+
+### The nightly auto-lock: things that bit me
+
+The first idea was "lock the door at 10pm". It turned into a bit more than that:
+
+- **Don't lock an open door.** A smart lock will happily throw its bolt into thin air, and then the door won't close. Both the tile and the automation check the door sensors first; the automation waits up to 10 minutes for the door to close, and notifies you if it doesn't.
+- **The lock goes offline.** Mine dropped off the network many times a week. The automation waits a few minutes for it to come back, then tries again at midnight and 2am.
+- **"Locked" is a state, not a command.** It sends `lock.lock`, then waits for the lock to *report* locked, up to 3 tries, and tells you if it never does.
+- **Late-night trips outside.** If someone unlocks the door after bedtime (taking the bins out) and forgets, it relocks after 10 minutes.
+- **Unlocking from the bedside should be deliberate.** Tap only locks; unlocking needs a long-press and a confirmation.
 
 ### Wired Ethernet instead of Wi-Fi
 

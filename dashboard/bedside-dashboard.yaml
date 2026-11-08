@@ -11,9 +11,13 @@
 #   light.bedroom                     main bedroom light (rail toggle)
 #   light.bedside_left                left bedside lamp
 #   light.bedside_right               right bedside lamp
+#   lock.front_door                   front door lock (Front Door tile)
+#   binary_sensor.front_door          the lock's own door sensor (open/closed)
+#   binary_sensor.front_door_contact  a separate contact sensor on the door (optional; see README)
 #
 # Requires: button-card, advanced-camera-card, and the View Assist integration
-# (for <viewassist-clock>). See the README.
+# (for <viewassist-clock>). The Front Door tile also needs script.front_door_lock_if_closed
+# from scripts.yaml. See the README.
 
 button_card_templates:
   # Shared "night" variable: true when the room is dark (<= 5 lux on the Echo's light sensor).
@@ -202,6 +206,110 @@ button_card_templates:
         - font-size: 5vh
         - font-weight: 500
         - color: '[[[ return variables.night ? "#c0392b" : "white" ]]]'
+
+  # Front door tile: shows the lock state and whether the door is open or closed.
+  # Tap locks (only if the door is closed, via script.front_door_lock_if_closed).
+  # Long-press unlocks, after a confirmation prompt.
+  lock_tile:
+    template: night_vars
+    entity: lock.front_door
+    triggers_update:
+      - sensor.bedside_echo_light_level
+      - binary_sensor.front_door
+      - binary_sensor.front_door_contact
+    variables:
+      door_open: |
+        [[[
+          const a = states['binary_sensor.front_door'];
+          const b = states['binary_sensor.front_door_contact'];
+          return (a && a.state === 'on') || (b && b.state === 'on');
+        ]]]
+    show_state: false
+    show_name: true
+    show_label: true
+    name: |
+      [[[
+        const s = entity ? entity.state : '';
+        if (s === 'locked') return 'Locked';
+        if (s === 'unlocked') return 'Unlocked';
+        if (s === 'locking') return 'Locking…';
+        if (s === 'unlocking') return 'Unlocking…';
+        return 'Offline';
+      ]]]
+    label: "[[[ return variables.door_open ? 'Door open' : 'Door closed'; ]]]"
+    icon: |
+      [[[
+        const s = entity ? entity.state : '';
+        if (variables.door_open) return 'mdi:door-open';
+        if (s === 'locked') return 'mdi:lock';
+        if (s === 'unlocked') return 'mdi:lock-open-variant';
+        if (s === 'locking' || s === 'unlocking') return 'mdi:lock-clock';
+        return 'mdi:lock-alert';
+      ]]]
+    tap_action:
+      action: perform-action
+      perform_action: script.front_door_lock_if_closed
+    hold_action:
+      action: perform-action
+      perform_action: lock.unlock
+      target:
+        entity_id: lock.front_door
+      confirmation:
+        text: Unlock the front door?
+    styles:
+      card:
+        - height: 26vh
+        - border: none
+        - border-radius: 20px
+        - box-shadow: none
+        - padding: 0
+        - background: |
+            [[[
+              const s = entity ? entity.state : '';
+              const locked = s === 'locked';
+              const open = variables.door_open;
+              if (variables.night) {
+                if (open) return 'rgba(200, 20, 0, 0.75)';
+                return locked ? 'rgba(60, 0, 0, 0.45)' : 'rgba(150, 40, 0, 0.65)';
+              }
+              if (open) return 'rgba(220, 40, 40, 0.55)';
+              if (locked) return 'rgba(46, 160, 67, 0.25)';
+              if (s === 'unlocked') return 'rgba(230, 120, 0, 0.45)';
+              return 'rgba(255, 255, 255, 0.08)';
+            ]]]
+      grid:
+        - grid-template-areas: '"i" "n" "l"'
+        - grid-template-rows: 1fr min-content min-content
+        - row-gap: 0.3vh
+        - padding: 2vh 0
+      icon:
+        - width: 8vh
+        - color: |
+            [[[
+              const s = entity ? entity.state : '';
+              const locked = s === 'locked';
+              const open = variables.door_open;
+              if (variables.night) {
+                if (open) return '#ff8a65';
+                return locked ? '#8b1a1a' : '#e0702b';
+              }
+              if (open) return '#ff6b6b';
+              if (locked) return '#6fdc8c';
+              if (s === 'unlocked') return '#FFB74D';
+              return 'rgba(255,255,255,0.5)';
+            ]]]
+      name:
+        - font-size: 5vh
+        - font-weight: 500
+        - color: '[[[ return variables.night ? "#c0392b" : "white" ]]]'
+      label:
+        - font-size: 3.5vh
+        - font-weight: 500
+        - color: |
+            [[[
+              if (variables.night) return variables.door_open ? '#ff8a65' : '#8b1a1a';
+              return variables.door_open ? '#ffd0d0' : 'rgba(255,255,255,0.7)';
+            ]]]
 
   section_title:
     template: night_vars
@@ -471,8 +579,8 @@ views:
                   - padding: 0
                 grid:
                   - grid-template-areas: |
-                      "bt bt bt bt bt bt"
-                      "l l l r r r"
+                      "bt bt bt bt dt dt"
+                      "l l r r lk lk"
                       "nt nt nt nt nt nt"
                       "on on low low off off"
                   - grid-template-columns: repeat(6, 1fr)
@@ -498,6 +606,15 @@ views:
                     entity: light.bedside_right
                     name: Right
                     icon: mdi:lamp
+                dt:
+                  card:
+                    type: custom:button-card
+                    template: section_title
+                    name: Front Door
+                lk:
+                  card:
+                    type: custom:button-card
+                    template: lock_tile
                 nt:
                   card:
                     type: custom:button-card
